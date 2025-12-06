@@ -61,7 +61,7 @@ interface AppContextType {
   
   // Funções de tipos de poste
   fetchPostTypes: () => Promise<void>;
-  addPostToBudget: (newPostData: { budget_id: string; post_type_id: string; name: string; x_coord: number; y_coord: number; }) => Promise<string>;
+  addPostToBudget: (newPostData: { budget_id: string; post_type_id: string; name: string; x_coord: number; y_coord: number; skipPostTypeMaterial?: boolean; }) => Promise<string>;
   addGroupToPost: (groupId: string, postId: string) => Promise<void>;
   deletePostFromBudget: (postId: string) => Promise<void>;
   updatePostCoordinates: (postId: string, x: number, y: number) => Promise<void>;
@@ -83,7 +83,7 @@ interface AppContextType {
   updateUtilityCompany: (id: string, data: { name: string }) => Promise<void>;
   deleteUtilityCompany: (id: string) => Promise<void>;
   fetchItemGroups: (companyId: string) => Promise<void>;
-  addGroup: (groupData: { name: string; description?: string; company_id: string; materials: { material_id: string; quantity: number }[] }) => Promise<void>;
+  addGroup: (groupData: { name: string; description?: string; company_id?: string; company_ids?: string[]; materials: { material_id: string; quantity: number }[] }) => Promise<void>; // Supports both company_id and company_ids
   updateGroup: (groupId: string, groupData: { name: string; description?: string; company_id: string; materials: { material_id: string; quantity: number }[] }) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
   
@@ -159,7 +159,7 @@ async function fetchAllRecords(
       });
     }
 
-    const { data, error, count } = await query;
+    const { data, error } = await query;
 
     if (error) {
       console.error(`Erro ao buscar registros de "${tableName}":`, error);
@@ -257,6 +257,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addMaterial = async (material: Omit<Material, 'id'>) => {
     try {
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
 
       
       // Mapear dados do frontend para o formato do banco
@@ -265,6 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name: material.descricao,
         price: material.precoUnit,
         unit: material.unidade,
+        user_id: user.id, // Adicionar user_id para isolamento de dados
       };
 
       const { data, error } = await supabase
@@ -661,7 +665,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.log(`✅ Novo orçamento criado: ${newBudget.id}`);
 
       // 3. Buscar todos os postes do orçamento original com seus detalhes
-      const { data: originalPosts, error: postsError, count: postsCount } = await supabase
+      const { data: originalPosts, error: postsError } = await supabase
         .from('budget_posts')
         .select(`
           *,
@@ -680,7 +684,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             quantity,
             price_at_addition
           )
-        `, { count: 'exact' })
+        `)
         .eq('budget_id', budgetId)
         .range(0, 1000); // Limite de 1000 postes por orçamento (otimizado)
 
@@ -735,7 +739,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
               // Duplicar materiais do grupo
               if (originalGroup.post_item_group_materials && originalGroup.post_item_group_materials.length > 0) {
-                const groupMaterials = originalGroup.post_item_group_materials.map(material => ({
+                const groupMaterials = originalGroup.post_item_group_materials.map((material: any) => ({
                   post_item_group_id: newGroup.id,
                   material_id: material.material_id,
                   quantity: material.quantity,
@@ -758,7 +762,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           // 4.3. Duplicar materiais avulsos do poste
           if (originalPost.post_materials && originalPost.post_materials.length > 0) {
-            const looseMaterials = originalPost.post_materials.map(material => ({
+            const looseMaterials = originalPost.post_materials.map((material: any) => ({
               post_id: newPost.id,
               material_id: material.material_id,
               quantity: material.quantity,
@@ -1021,7 +1025,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       
       // Query aninhada para buscar todos os postes relacionados ao orçamento
-      const { data: postsData, error: postsError, count: postsCount } = await supabase
+      const { data: postsData, error: postsError } = await supabase
         .from('budget_posts')
         .select(`
           id,
@@ -1069,7 +1073,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               price
             )
           )
-        `, { count: 'exact' })
+        `)
         .eq('budget_id', budgetId)
         .order('created_at', { ascending: true })
         .range(0, 500); // Limite de 500 postes por orçamento (otimizado)
@@ -1216,6 +1220,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addPostType = async (data: { name: string; code?: string; description?: string; shape?: string; height_m?: number; price: number }) => {
     try {
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
+
       // Primeiro, criar o material correspondente
       const { data: newMaterial, error: materialError } = await supabase
         .from('materials')
@@ -1225,6 +1233,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           description: data.description?.trim() || null,
           unit: 'unidade',
           price: data.price,
+          user_id: user.id, // Adicionar user_id para isolamento de dados
         })
         .select()
         .single();
@@ -1256,6 +1265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           height_m: data.height_m || null,
           price: data.price,
           material_id: newMaterial.id, // Linkar com o material criado
+          user_id: user.id, // Adicionar user_id para isolamento de dados
         })
         .select()
         .single();
@@ -2274,10 +2284,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addUtilityCompany = async (data: { name: string }) => {
     try {
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
+
       const { data: newCompany, error } = await supabase
         .from('utility_companies')
         .insert({
           name: data.name.trim(),
+          user_id: user.id, // Adicionar user_id para isolamento de dados
         })
         .select()
         .single();
@@ -2384,7 +2399,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       
       // Buscar templates de grupos para a empresa
-      const { data: templatesData, error: templatesError, count } = await supabase
+      const { data: templatesData, error: templatesError } = await supabase
         .from('item_group_templates')
         .select(`
           id,
@@ -2402,7 +2417,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               unit
             )
           )
-        `, { count: 'exact' })
+        `)
         .eq('company_id', companyId)
         .range(0, 200); // Limite de 200 grupos por concessionária (otimizado)
 
@@ -2437,6 +2452,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addGroup = async (groupData: { name: string; description?: string; company_id?: string; company_ids?: string[]; materials: { material_id: string; quantity: number }[] }) => {
     try {
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
+
       // Determinar quais concessionárias serão usadas
       // Suporta tanto company_id (modo antigo) quanto company_ids (modo novo)
       const companyIds = groupData.company_ids || (groupData.company_id ? [groupData.company_id] : []);
@@ -2457,6 +2476,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             name: groupData.name,
             description: groupData.description || null,
             company_id: companyId,
+            user_id: user.id, // Adicionar user_id para isolamento de dados
           })
           .select()
           .single();

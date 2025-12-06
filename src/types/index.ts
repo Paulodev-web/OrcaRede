@@ -149,3 +149,141 @@ export interface BudgetDetails {
   posts: BudgetPostDetail[];
   render_version?: number; // Versão da lógica de renderização (1=legado, 2=alta resolução)
 }
+
+// ===============================================
+// TIPOS IAM (Identity and Access Management)
+// ===============================================
+
+export interface Role {
+  id: string;
+  name: string;
+  display_name: string;
+  description?: string;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Permission {
+  id: string;
+  name: string;
+  display_name: string;
+  description?: string;
+  resource: string;
+  action: string;
+  is_system: boolean;
+  created_at: string;
+}
+
+export interface RolePermission {
+  id: string;
+  role_id: string;
+  permission_id: string;
+  created_at: string;
+}
+
+export interface UserRole {
+  id: string;
+  user_id: string;
+  role_id: string;
+  assigned_by?: string;
+  assigned_at: string;
+  expires_at?: string;
+}
+
+export interface UserProfile {
+  id: string;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  department?: string;
+  position?: string;
+  is_active: boolean;
+  last_login?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Tipos expandidos com joins
+export interface RoleWithPermissions extends Role {
+  permissions: Permission[];
+}
+
+export interface UserWithRoles {
+  id: string;
+  email: string;
+  profile?: UserProfile;
+  roles: Role[];
+  permissions: Permission[];
+}
+
+export interface UserRoleDetail extends UserRole {
+  role?: Role;
+  assigned_by_user?: {
+    id: string;
+    email: string;
+  };
+}
+
+// Tipos para formulários e edição
+export interface CreateRoleInput {
+  name: string;
+  display_name: string;
+  description?: string;
+  permission_ids?: string[];
+}
+
+export interface UpdateRoleInput {
+  display_name?: string;
+  description?: string;
+  permission_ids?: string[];
+}
+
+export interface AssignRoleInput {
+  user_id: string;
+  role_id: string;
+  expires_at?: string;
+}
+
+export interface UpdateUserProfileInput {
+  full_name?: string;
+  phone?: string;
+  department?: string;
+  position?: string;
+  is_active?: boolean;
+}
+
+// Tipos para recursos do IAM
+export type ResourceType = 
+  | 'budgets' 
+  | 'materials' 
+  | 'companies' 
+  | 'groups' 
+  | 'post_types' 
+  | 'users' 
+  | 'roles' 
+  | 'reports' 
+  | 'settings';
+
+export type ActionType = 
+  | 'create' 
+  | 'read' 
+  | 'update' 
+  | 'delete' 
+  | 'manage' 
+  | 'generate' 
+  | 'export';
+
+export interface PermissionCheck {
+  resource: ResourceType;
+  action: ActionType;
+}
+
+// Enums para roles padrão do sistema
+export enum SystemRoles {
+  SUPER_ADMIN = 'super_admin',
+  ADMIN = 'admin',
+  MANAGER = 'manager',
+  EDITOR = 'editor',
+  VIEWER = 'viewer'
+}

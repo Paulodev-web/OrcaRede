@@ -88,7 +88,7 @@ export function Login() {
           </div>
 
           <div className="text-center">
-            <h1 className="text-4xl font-bold mb-4">ON Engenharia</h1>
+            <h1 className="text-4xl font-bold mb-4">OrçaRede</h1>
             <p className="text-xl text-blue-100 mb-2">Sistema de Orçamentos</p>
             <p className="text-blue-200 max-w-md">
               Gerencie seus projetos elétricos com eficiência e segurança
@@ -102,7 +102,7 @@ export function Login() {
         <div className="mx-auto w-full max-w-sm lg:w-96">
           {/* Header do login no mobile */}
           <div className="lg:hidden text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">ON Engenharia</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">OrçaRede</h1>
             <p className="text-gray-600">Sistema de Orçamentos</p>
           </div>
 
@@ -225,7 +225,7 @@ export function Login() {
 
           <div className="mt-6">
             <div className="text-center text-sm text-gray-600">
-              © 2024 ON Engenharia. Todos os direitos reservados.
+              © 2024 OrçaRede. Todos os direitos reservados.
             </div>
           </div>
         </div>

@@ -19,7 +19,7 @@ class ModalErrorBoundary extends React.Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
+  componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
     if (this.props.onError) {
       this.props.onError();
     }
@@ -522,9 +522,9 @@ function AddPostModalContent({ isOpen, onClose, coordinates, onSubmit, onSubmitW
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          <form onSubmit={handleSubmit} className="h-full flex flex-col">
-            <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <form onSubmit={handleSubmit} className="h-full flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">
               {/* Aba Dados do Poste */}
               {activeTab === 'post' && (
                 <div className="space-y-4">
@@ -542,43 +542,6 @@ function AddPostModalContent({ isOpen, onClose, coordinates, onSubmit, onSubmitW
                       required
                       disabled={isSubmitting}
                     />
-                  </div>
-
-                  <div>
-                    <label htmlFor="postType" className="block text-sm font-medium text-gray-700 mb-1">
-                      Tipo de Poste *
-                    </label>
-                    {loadingPostTypes ? (
-                      <div className="flex items-center space-x-2 p-3 border border-gray-300 rounded-md">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-gray-500">Carregando tipos...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <select
-                          id="postType"
-                          value={selectedPostType}
-                          onChange={(e) => setSelectedPostType(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required
-                          disabled={isSubmitting}
-                        >
-                          <option value="">Selecione um tipo de poste</option>
-                          {postTypes.map((postType) => (
-                            <option key={postType.id} value={postType.id}>
-                              {postType.name} {postType.code && `(${postType.code})`} - R$ {postType.price.toFixed(2)}
-                              {postType.height_m && ` - ${postType.height_m}m`}
-                            </option>
-                          ))}
-                        </select>
-                        {selectedPostType && selectedSourcePostId && (
-                          <p className="mt-2 text-sm text-green-600 flex items-center">
-                            <Copy className="h-4 w-4 mr-1" />
-                            Tipo de poste copiado do poste selecionado
-                          </p>
-                        )}
-                      </>
-                    )}
                   </div>
                   
                   {(selectedGroups.length > 0 || selectedMaterials.length > 0) && (
@@ -621,32 +584,6 @@ function AddPostModalContent({ isOpen, onClose, coordinates, onSubmit, onSubmitW
                       </div>
                     ) : (
                       <>
-                        <select
-                          id="sourcePost"
-                          value={selectedSourcePostId}
-                          onChange={(e) => setSelectedSourcePostId(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3"
-                        >
-                          <option value="">Selecione um poste...</option>
-                          {budgetDetails.posts.map((post) => (
-                            <option key={post.id} value={post.id}>
-                              {post.name} - {post.post_types?.name || 'Sem tipo'}
-                              {' '}({post.post_item_groups.length} grupos, {post.post_materials.length} materiais)
-                            </option>
-                          ))}
-                        </select>
-
-                        {selectedSourcePostId && (
-                          <button
-                            type="button"
-                            onClick={() => handleDuplicateFromPost(selectedSourcePostId)}
-                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                          >
-                            <Copy className="h-4 w-4" />
-                            <span>Copiar Configurações</span>
-                          </button>
-                        )}
-
                         {/* Preview do poste selecionado */}
                         {selectedSourcePostId && (() => {
                           const sourcePost = budgetDetails.posts.find(p => p.id === selectedSourcePostId);
@@ -998,7 +935,90 @@ function AddPostModalContent({ isOpen, onClose, coordinates, onSubmit, onSubmitW
             </div>
 
             {/* Footer */}
-            <div className="border-t p-6">
+            <div className="border-t p-6 bg-white flex-shrink-0 space-y-4">
+              {/* Caixas de seleção - sempre visíveis na parte inferior */}
+              
+              {/* Select de Tipo de Poste - mostra quando não está na aba duplicate */}
+              {activeTab !== 'duplicate' && (
+                <div>
+                  <label htmlFor="postType" className="block text-sm font-medium text-gray-700 mb-1">
+                    Tipo de Poste *
+                  </label>
+                  {loadingPostTypes ? (
+                    <div className="flex items-center space-x-2 p-3 border border-gray-300 rounded-md">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-gray-500">Carregando tipos...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        id="postType"
+                        value={selectedPostType}
+                        onChange={(e) => setSelectedPostType(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Selecione um tipo de poste</option>
+                        {postTypes.map((postType) => (
+                          <option key={postType.id} value={postType.id}>
+                            {postType.name} {postType.code && `(${postType.code})`} - R$ {postType.price.toFixed(2)}
+                            {postType.height_m && ` - ${postType.height_m}m`}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedPostType && selectedSourcePostId && (
+                        <p className="mt-2 text-sm text-green-600 flex items-center">
+                          <Copy className="h-4 w-4 mr-1" />
+                          Tipo de poste copiado do poste selecionado
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Select de Poste Origem - mostra apenas na aba duplicate */}
+              {activeTab === 'duplicate' && (
+                <div>
+                  <label htmlFor="sourcePost" className="block text-sm font-medium text-gray-700 mb-1">
+                    Selecionar Poste Origem
+                  </label>
+                  {!budgetDetails || budgetDetails.posts.length === 0 ? (
+                    <div className="p-3 border border-gray-300 rounded-md bg-gray-50">
+                      <p className="text-sm text-gray-500">Nenhum poste disponível para copiar</p>
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        id="sourcePost"
+                        value={selectedSourcePostId}
+                        onChange={(e) => setSelectedSourcePostId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Selecione um poste...</option>
+                        {budgetDetails.posts.map((post) => (
+                          <option key={post.id} value={post.id}>
+                            {post.name} - {post.post_types?.name || 'Sem tipo'}
+                            {' '}({post.post_item_groups.length} grupos, {post.post_materials.length} materiais)
+                          </option>
+                        ))}
+                      </select>
+                      {selectedSourcePostId && (
+                        <button
+                          type="button"
+                          onClick={() => handleDuplicateFromPost(selectedSourcePostId)}
+                          className="mt-2 w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                        >
+                          <Copy className="h-4 w-4" />
+                          <span>Copiar Configurações</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-600">
                   {hasAdditionalItems && (

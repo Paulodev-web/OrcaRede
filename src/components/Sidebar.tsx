@@ -10,10 +10,13 @@ import {
   X, 
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Shield,
+  UserCog
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
+import { Can } from '../hooks/usePermissions';
 
 interface SidebarProps {
   className?: string;
@@ -25,6 +28,8 @@ interface NavItem {
   icon: React.ComponentType<any>;
   view: string;
   description?: string;
+  permission?: string; // Permissão necessária para ver o item
+  permissions?: string[]; // Múltiplas permissões (qualquer uma)
 }
 
 const navigationItems: NavItem[] = [
@@ -50,28 +55,51 @@ const configurationItems: NavItem[] = [
     label: 'Materiais',
     icon: Package,
     view: 'materiais',
-    description: 'Gerenciar materiais'
+    description: 'Gerenciar materiais',
+    permissions: ['materials.read', 'materials.manage']
   },
   {
     id: 'concessionarias',
     label: 'Concessionárias',
     icon: Building,
     view: 'concessionarias',
-    description: 'Gerenciar concessionárias'
+    description: 'Gerenciar concessionárias',
+    permissions: ['companies.read', 'companies.manage']
   },
   {
     id: 'grupos',
     label: 'Grupos de Itens',
     icon: Users,
     view: 'grupos',
-    description: 'Gerenciar grupos'
+    description: 'Gerenciar grupos',
+    permissions: ['groups.read', 'groups.manage']
   },
   {
     id: 'tipos-postes',
     label: 'Tipos de Postes',
     icon: Pilcrow,
     view: 'tipos-postes',
-    description: 'Gerenciar tipos de postes'
+    description: 'Gerenciar tipos de postes',
+    permissions: ['post_types.read', 'post_types.manage']
+  }
+];
+
+const administrationItems: NavItem[] = [
+  {
+    id: 'usuarios',
+    label: 'Usuários',
+    icon: UserCog,
+    view: 'usuarios',
+    description: 'Gerenciar usuários',
+    permissions: ['users.read', 'users.manage']
+  },
+  {
+    id: 'roles',
+    label: 'Roles e Permissões',
+    icon: Shield,
+    view: 'roles',
+    description: 'Gerenciar roles',
+    permissions: ['roles.read', 'roles.manage']
   }
 ];
 
@@ -106,7 +134,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
   const NavItemComponent = ({ item, isActive }: { item: NavItem; isActive: boolean }) => {
     const Icon = item.icon;
     
-    return (
+    const buttonContent = (
       <button
         onClick={() => handleNavigation(item.view)}
         className={`
@@ -130,6 +158,17 @@ export function Sidebar({ className = '' }: SidebarProps) {
         )}
       </button>
     );
+
+    // Se o item requer permissões, envolve com Can
+    if (item.permission) {
+      return <Can permission={item.permission}>{buttonContent}</Can>;
+    }
+    if (item.permissions && item.permissions.length > 0) {
+      return <Can permissions={item.permissions}>{buttonContent}</Can>;
+    }
+
+    // Se não requer permissão, mostra diretamente
+    return buttonContent;
   };
 
   return (
@@ -168,7 +207,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-bold text-gray-900 truncate">
-                ON Engenharia
+                OrçaRede
               </h1>
               <p className="text-xs text-gray-500 truncate">
                 Sistema de Orçamentos
@@ -224,6 +263,25 @@ export function Sidebar({ className = '' }: SidebarProps) {
               />
             ))}
           </div>
+
+          {/* Seção de Administração (IAM) */}
+          <Can permissions={['users.read', 'roles.read']}>
+            <div className="my-4 border-t border-gray-200" />
+            <div className="space-y-1">
+              {!isCollapsed && (
+                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Administração
+                </h3>
+              )}
+              {administrationItems.map((item) => (
+                <NavItemComponent
+                  key={item.id}
+                  item={item}
+                  isActive={currentView === item.view}
+                />
+              ))}
+            </div>
+          </Can>
         </div>
 
         {/* Footer da Sidebar - Usuário e Logout */}
@@ -236,6 +294,13 @@ export function Sidebar({ className = '' }: SidebarProps) {
               <p className="text-xs text-gray-500">
                 Usuário logado
               </p>
+              {/* Mostra role principal se existir */}
+              <Can permissions={['users.read', 'roles.read']}>
+                <p className="text-xs text-blue-600 mt-1 flex items-center">
+                  <Shield className="h-3 w-3 mr-1" />
+                  Administrador
+                </p>
+              </Can>
             </div>
           )}
           

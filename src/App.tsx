@@ -10,8 +10,11 @@ import { GerenciarGrupos } from './components/GerenciarGrupos';
 import { GerenciarConcessionarias } from './components/GerenciarConcessionarias';
 import { GerenciarTiposPostes } from './components/GerenciarTiposPostes';
 import { EditorGrupo } from './components/EditorGrupo';
+import GerenciarUsuarios from './components/GerenciarUsuarios';
+import GerenciarRoles from './components/GerenciarRoles';
 import { Login } from './components/Login';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { Can } from './hooks/usePermissions';
 
 function AppContent() {
   const { session, loading } = useAuth();
@@ -42,7 +45,7 @@ function AppContent() {
 }
 
 function AuthenticatedApp() {
-  const { currentView } = useApp();
+  const { currentView, setCurrentView } = useApp();
 
   const renderCurrentView = () => {
     switch (currentView) {
@@ -62,6 +65,46 @@ function AuthenticatedApp() {
         return <GerenciarTiposPostes />;
       case 'editor-grupo':
         return <EditorGrupo />;
+      case 'usuarios':
+        return (
+          <Can 
+            permissions={['users.read', 'users.manage']}
+            fallback={
+              <div className="text-center py-12">
+                <p className="text-red-600 text-lg">Acesso negado</p>
+                <p className="text-gray-600 mt-2">Você não tem permissão para acessar esta página</p>
+                <button
+                  onClick={() => setCurrentView('dashboard')}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Voltar ao Dashboard
+                </button>
+              </div>
+            }
+          >
+            <GerenciarUsuarios />
+          </Can>
+        );
+      case 'roles':
+        return (
+          <Can 
+            permissions={['roles.read', 'roles.manage']}
+            fallback={
+              <div className="text-center py-12">
+                <p className="text-red-600 text-lg">Acesso negado</p>
+                <p className="text-gray-600 mt-2">Você não tem permissão para acessar esta página</p>
+                <button
+                  onClick={() => setCurrentView('dashboard')}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Voltar ao Dashboard
+                </button>
+              </div>
+            }
+          >
+            <GerenciarRoles />
+          </Can>
+        );
       default:
         return <Dashboard />;
     }

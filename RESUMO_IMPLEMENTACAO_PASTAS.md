@@ -259,5 +259,5 @@ Basta aplicar a migração no banco de dados e começar a usar!
 
 ---
 
-**Desenvolvido com ❤️ para ON Engenharia Elétrica**
+**Desenvolvido com ❤️ para OrçaRede**
 

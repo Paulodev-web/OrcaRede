@@ -19,7 +19,9 @@ export function Layout({ children }: LayoutProps) {
       case 'concessionarias': return 'Gerenciar Concessionárias';
       case 'tipos-postes': return 'Gerenciar Tipos de Poste';
       case 'editor-grupo': return 'Editor de Grupo de Itens';
-      default: return 'ON Engenharia Elétrica';
+      case 'usuarios': return 'Gerenciar Usuários';
+      case 'roles': return 'Gerenciar Roles e Permissões';
+      default: return 'OrçaRede';
     }
   };
 
@@ -33,6 +35,8 @@ export function Layout({ children }: LayoutProps) {
       case 'concessionarias': return 'Cadastre e gerencie concessionárias de energia';
       case 'tipos-postes': return 'Configure os tipos de postes disponíveis';
       case 'editor-grupo': return 'Edite os detalhes do grupo selecionado';
+      case 'usuarios': return 'Gerencie usuários, roles e permissões do sistema';
+      case 'roles': return 'Configure roles e suas permissões de acesso';
       default: return '';
     }
   };

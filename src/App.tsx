@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/Layout';
@@ -10,16 +11,18 @@ import { GerenciarGrupos } from './components/GerenciarGrupos';
 import { GerenciarConcessionarias } from './components/GerenciarConcessionarias';
 import { GerenciarTiposPostes } from './components/GerenciarTiposPostes';
 import { EditorGrupo } from './components/EditorGrupo';
-import GerenciarUsuarios from './components/GerenciarUsuarios';
-import GerenciarRoles from './components/GerenciarRoles';
 import { Login } from './components/Login';
+import { SignUp } from './components/SignUp';
+import { ForgotPassword } from './components/ForgotPassword';
+import { ResetPassword } from './components/ResetPassword';
+import { VerifyEmail } from './components/VerifyEmail';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Can } from './hooks/usePermissions';
 
-function AppContent() {
+// Componente para rotas públicas (login, signup, etc)
+function PublicRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
 
-  // Mostra um indicador de carregamento enquanto verifica a autenticação
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -31,21 +34,22 @@ function AppContent() {
     );
   }
 
-  // Se não houver sessão, mostra a tela de login
-  if (!session) {
-    return <Login />;
+  // Se já está autenticado, redireciona para o dashboard
+  if (session) {
+    return <Navigate to="/" replace />;
   }
 
-  // Se há sessão, renderiza o app principal com ErrorBoundary interno
-  return (
-    <ErrorBoundary>
-      <AuthenticatedApp />
-    </ErrorBoundary>
-  );
+  return <>{children}</>;
 }
 
 function AuthenticatedApp() {
-  const { currentView, setCurrentView } = useApp();
+  const { currentView } = useApp();
+  const { session } = useAuth();
+
+  // Se não há sessão, não renderiza nada (o ProtectedRoute já deve ter redirecionado)
+  if (!session) {
+    return null;
+  }
 
   const renderCurrentView = () => {
     switch (currentView) {
@@ -65,46 +69,6 @@ function AuthenticatedApp() {
         return <GerenciarTiposPostes />;
       case 'editor-grupo':
         return <EditorGrupo />;
-      case 'usuarios':
-        return (
-          <Can 
-            permissions={['users.read', 'users.manage']}
-            fallback={
-              <div className="text-center py-12">
-                <p className="text-red-600 text-lg">Acesso negado</p>
-                <p className="text-gray-600 mt-2">Você não tem permissão para acessar esta página</p>
-                <button
-                  onClick={() => setCurrentView('dashboard')}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Voltar ao Dashboard
-                </button>
-              </div>
-            }
-          >
-            <GerenciarUsuarios />
-          </Can>
-        );
-      case 'roles':
-        return (
-          <Can 
-            permissions={['roles.read', 'roles.manage']}
-            fallback={
-              <div className="text-center py-12">
-                <p className="text-red-600 text-lg">Acesso negado</p>
-                <p className="text-gray-600 mt-2">Você não tem permissão para acessar esta página</p>
-                <button
-                  onClick={() => setCurrentView('dashboard')}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Voltar ao Dashboard
-                </button>
-              </div>
-            }
-          >
-            <GerenciarRoles />
-          </Can>
-        );
       default:
         return <Dashboard />;
     }
@@ -122,11 +86,60 @@ function AuthenticatedApp() {
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppProvider>
-          <AppContent />
-        </AppProvider>
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppProvider>
+            <Routes>
+              {/* Rotas públicas */}
+              <Route
+                path="/login"
+                element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/signup"
+                element={
+                  <PublicRoute>
+                    <SignUp />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/forgot-password"
+                element={
+                  <PublicRoute>
+                    <ForgotPassword />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/reset-password"
+                element={<ResetPassword />}
+              />
+              <Route
+                path="/verify-email"
+                element={<VerifyEmail />}
+              />
+
+              {/* Rotas protegidas - requerem autenticação e email confirmado */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute requireEmailVerification={true}>
+                    <AuthenticatedApp />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Rota catch-all - redireciona para login */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </AppProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

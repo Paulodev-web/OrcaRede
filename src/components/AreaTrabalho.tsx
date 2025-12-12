@@ -17,7 +17,8 @@ export function AreaTrabalho() {
     budgetDetails,
     loadingBudgetDetails,
     fetchBudgetDetails,
-
+    postTypes,
+    loadingPostTypes,
     fetchPostTypes,
     addPostToBudget,
     deletePostFromBudget,
@@ -39,6 +40,7 @@ export function AreaTrabalho() {
     
     // Catálogo de materiais
     materiais,
+    loadingMaterials,
     fetchMaterials
     // Adicione aqui quaisquer outras funções/estados do context que a UI usa
   } = useApp();
@@ -70,14 +72,21 @@ export function AreaTrabalho() {
     // Só executa se tivermos um ID de orçamento
     if (budgetId) {
       fetchBudgetDetails(budgetId);
-      fetchPostTypes(); // Sempre busca o catálogo de tipos de poste
-      fetchMaterials(); // Sempre busca o catálogo de materiais para "Materiais Avulsos"
+      
+      // Só busca catálogos se não estiverem carregados
+      if (postTypes.length === 0 && !loadingPostTypes) {
+        fetchPostTypes();
+      }
+      if (materiais.length === 0 && !loadingMaterials) {
+        fetchMaterials();
+      }
+      
       // Se tivermos um ID de empresa, busca os grupos de itens
       if (companyId) {
         fetchItemGroups(companyId);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentOrcamento?.id, currentOrcamento?.company_id]); // Funções useCallback são estáveis
   
   // Função para ser chamada pelo clique direito no canvas

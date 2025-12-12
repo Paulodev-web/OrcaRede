@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Calculator,  
@@ -10,13 +11,10 @@ import {
   X, 
   LogOut,
   ChevronLeft,
-  ChevronRight,
-  Shield,
-  UserCog
+  ChevronRight
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Can } from '../hooks/usePermissions';
 
 interface SidebarProps {
   className?: string;
@@ -28,8 +26,6 @@ interface NavItem {
   icon: React.ComponentType<any>;
   view: string;
   description?: string;
-  permission?: string; // Permissão necessária para ver o item
-  permissions?: string[]; // Múltiplas permissões (qualquer uma)
 }
 
 const navigationItems: NavItem[] = [
@@ -55,59 +51,38 @@ const configurationItems: NavItem[] = [
     label: 'Materiais',
     icon: Package,
     view: 'materiais',
-    description: 'Gerenciar materiais',
-    permissions: ['materials.read', 'materials.manage']
+    description: 'Gerenciar materiais'
   },
   {
     id: 'concessionarias',
     label: 'Concessionárias',
     icon: Building,
     view: 'concessionarias',
-    description: 'Gerenciar concessionárias',
-    permissions: ['companies.read', 'companies.manage']
+    description: 'Gerenciar concessionárias'
   },
   {
     id: 'grupos',
     label: 'Grupos de Itens',
     icon: Users,
     view: 'grupos',
-    description: 'Gerenciar grupos',
-    permissions: ['groups.read', 'groups.manage']
+    description: 'Gerenciar grupos'
   },
   {
     id: 'tipos-postes',
     label: 'Tipos de Postes',
     icon: Pilcrow,
     view: 'tipos-postes',
-    description: 'Gerenciar tipos de postes',
-    permissions: ['post_types.read', 'post_types.manage']
-  }
-];
-
-const administrationItems: NavItem[] = [
-  {
-    id: 'usuarios',
-    label: 'Usuários',
-    icon: UserCog,
-    view: 'usuarios',
-    description: 'Gerenciar usuários',
-    permissions: ['users.read', 'users.manage']
-  },
-  {
-    id: 'roles',
-    label: 'Roles e Permissões',
-    icon: Shield,
-    view: 'roles',
-    description: 'Gerenciar roles',
-    permissions: ['roles.read', 'roles.manage']
+    description: 'Gerenciar tipos de postes'
   }
 ];
 
 export function Sidebar({ className = '' }: SidebarProps) {
   const { currentView, setCurrentView } = useApp();
   const { signOut, user } = useAuth();
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleNavigation = (view: string) => {
     setCurrentView(view);
@@ -116,10 +91,24 @@ export function Sidebar({ className = '' }: SidebarProps) {
   };
 
   const handleLogout = async () => {
+    if (isLoggingOut) return; // Previne múltiplos cliques
+    
+    setIsLoggingOut(true);
     try {
+      // Faz logout primeiro
       await signOut();
+      
+      // Aguarda um pouco para o estado ser atualizado
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Redireciona explicitamente
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+      // Mesmo com erro, tenta redirecionar
+      navigate('/login', { replace: true });
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -134,7 +123,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
   const NavItemComponent = ({ item, isActive }: { item: NavItem; isActive: boolean }) => {
     const Icon = item.icon;
     
-    const buttonContent = (
+    return (
       <button
         onClick={() => handleNavigation(item.view)}
         className={`
@@ -158,17 +147,6 @@ export function Sidebar({ className = '' }: SidebarProps) {
         )}
       </button>
     );
-
-    // Se o item requer permissões, envolve com Can
-    if (item.permission) {
-      return <Can permission={item.permission}>{buttonContent}</Can>;
-    }
-    if (item.permissions && item.permissions.length > 0) {
-      return <Can permissions={item.permissions}>{buttonContent}</Can>;
-    }
-
-    // Se não requer permissão, mostra diretamente
-    return buttonContent;
   };
 
   return (
@@ -263,25 +241,6 @@ export function Sidebar({ className = '' }: SidebarProps) {
               />
             ))}
           </div>
-
-          {/* Seção de Administração (IAM) */}
-          <Can permissions={['users.read', 'roles.read']}>
-            <div className="my-4 border-t border-gray-200" />
-            <div className="space-y-1">
-              {!isCollapsed && (
-                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Administração
-                </h3>
-              )}
-              {administrationItems.map((item) => (
-                <NavItemComponent
-                  key={item.id}
-                  item={item}
-                  isActive={currentView === item.view}
-                />
-              ))}
-            </div>
-          </Can>
         </div>
 
         {/* Footer da Sidebar - Usuário e Logout */}
@@ -294,29 +253,26 @@ export function Sidebar({ className = '' }: SidebarProps) {
               <p className="text-xs text-gray-500">
                 Usuário logado
               </p>
-              {/* Mostra role principal se existir */}
-              <Can permissions={['users.read', 'roles.read']}>
-                <p className="text-xs text-blue-600 mt-1 flex items-center">
-                  <Shield className="h-3 w-3 mr-1" />
-                  Administrador
-                </p>
-              </Can>
             </div>
           )}
           
           <button
             onClick={handleLogout}
+            disabled={isLoggingOut}
             className={`
               w-full flex items-center px-3 py-2.5 text-left rounded-lg
               text-red-600 hover:bg-red-50 hover:text-red-700
               transition-colors duration-200
               ${isCollapsed ? 'justify-center' : 'space-x-3'}
+              ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}
             `}
             title={isCollapsed ? 'Sair' : undefined}
           >
-            <LogOut className="h-5 w-5 flex-shrink-0" />
+            <LogOut className={`h-5 w-5 flex-shrink-0 ${isLoggingOut ? 'animate-pulse' : ''}`} />
             {!isCollapsed && (
-              <span className="text-sm font-medium">Sair</span>
+              <span className="text-sm font-medium">
+                {isLoggingOut ? 'Saindo...' : 'Sair'}
+              </span>
             )}
           </button>
         </div>

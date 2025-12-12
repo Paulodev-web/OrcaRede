@@ -25,8 +25,11 @@ export function GerenciarTiposPostes() {
 
   // Buscar tipos de poste quando o componente for montado
   useEffect(() => {
-    fetchPostTypes();
-  }, [fetchPostTypes]);
+    if (postTypes.length === 0 && !loadingPostTypes) {
+      fetchPostTypes();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executa apenas uma vez na montagem
 
   // Auto-hide messages after 5 seconds
   useEffect(() => {

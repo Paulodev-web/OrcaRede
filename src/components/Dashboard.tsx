@@ -45,10 +45,16 @@ export function Dashboard() {
   const alertDialog = useAlertDialog();
 
   // Buscar orçamentos e pastas na montagem do componente
+  // Só busca se não houver dados carregados
   useEffect(() => {
-    fetchBudgets();
-    fetchFolders();
-  }, [fetchBudgets, fetchFolders]);
+    if (budgets.length === 0 && !loadingBudgets) {
+      fetchBudgets();
+    }
+    if (folders.length === 0 && !loadingFolders) {
+      fetchFolders();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executa apenas uma vez na montagem
 
   const handleAbrirOrcamento = (orcamentoId: string) => {
     const orcamento = budgets.find(o => o.id === orcamentoId);

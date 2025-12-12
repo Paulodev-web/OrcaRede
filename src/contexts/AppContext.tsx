@@ -148,7 +148,7 @@ async function fetchAllRecords(
     
     let query = supabase
       .from(tableName)
-      .select(selectQuery, { count: 'exact' })
+      .select(selectQuery) // Removido count: 'exact' para melhor performance
       .order(orderBy, { ascending })
       .range(from, to);
 
@@ -167,7 +167,8 @@ async function fetchAllRecords(
     }
 
     if (data && data.length > 0) {
-      allRecords = [...allRecords, ...data];
+      // Usar push para melhor performance em vez de spread
+      allRecords.push(...data);
       hasMore = data.length === pageSize;
       page++;
     } else {
@@ -222,28 +223,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       setLoadingMaterials(true);
 
+      // Otimização: Buscar apenas os campos necessários (não usar *)
+      // Isso reduz significativamente o tamanho da resposta
+      const selectQuery = 'id, code, name, price, unit';
+      
       // Buscar TODOS os materiais usando a função helper de paginação
-      const allMaterials = await fetchAllRecords('materials', '*', 'created_at', false);
+      // Ordenar por created_at DESC para mostrar os mais recentes primeiro
+      const allMaterials = await fetchAllRecords('materials', selectQuery, 'created_at', false);
 
       // Mapear os dados do banco para o formato do frontend
-      const materiaisFormatados: Material[] = allMaterials.map(item => ({
-        id: item.id,
-        codigo: item.code || '',
-        descricao: item.name || '',
-        precoUnit: parseFloat(item.price) || 0,
-        unidade: item.unit || '',
-      }));
-
-      // Remover duplicatas baseado no ID (manter apenas o primeiro)
-      const materiaisUnicos: Material[] = [];
-      const idsVistos = new Set<string>();
+      // Usar Map para remover duplicatas de forma mais eficiente
+      const materiaisMap = new Map<string, Material>();
       
-      for (const material of materiaisFormatados) {
-        if (!idsVistos.has(material.id)) {
-          idsVistos.add(material.id);
-          materiaisUnicos.push(material);
+      for (const item of allMaterials) {
+        // Pular itens sem ID válido
+        if (!item.id) continue;
+        
+        // Se já existe, manter o primeiro (mais antigo)
+        if (!materiaisMap.has(item.id)) {
+          materiaisMap.set(item.id, {
+            id: item.id,
+            codigo: item.code || '',
+            descricao: item.name || '',
+            precoUnit: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
+            unidade: item.unit || '',
+          });
         }
       }
+
+      // Converter Map para Array (já está sem duplicatas)
+      const materiaisUnicos = Array.from(materiaisMap.values());
 
       setMateriais(materiaisUnicos);
     } catch (error) {
@@ -428,16 +437,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Funções para orçamentos
   const fetchBudgets = useCallback(async () => {
     if (!user) {
-
       return;
     }
 
     try {
       setLoadingBudgets(true);
 
+      // Otimização: Buscar apenas campos necessários
+      const selectQuery = 'id, project_name, company_id, client_name, city, status, created_at, updated_at, plan_image_url, folder_id, render_version';
       
       // Buscar TODOS os orçamentos usando a função helper de paginação
-      const data = await fetchAllRecords('budgets', '*, plan_image_url, folder_id', 'created_at', false, { user_id: user.id });
+      const data = await fetchAllRecords('budgets', selectQuery, 'created_at', false, { user_id: user.id });
 
 
 
@@ -1192,9 +1202,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       setLoadingPostTypes(true);
 
+      // Otimização: Buscar apenas campos necessários
+      const selectQuery = 'id, name, code, description, shape, height_m, price';
       
       // Buscar TODOS os tipos de poste usando a função helper de paginação
-      const data = await fetchAllRecords('post_types', '*', 'name', true);
+      const data = await fetchAllRecords('post_types', selectQuery, 'name', true);
 
 
 
@@ -2260,9 +2272,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       setLoadingCompanies(true);
 
+      // Otimização: Buscar apenas campos necessários
+      const selectQuery = 'id, name';
       
       // Buscar TODAS as concessionárias usando a função helper de paginação
-      const data = await fetchAllRecords('utility_companies', '*', 'name', true);
+      const data = await fetchAllRecords('utility_companies', selectQuery, 'name', true);
 
 
 
@@ -2419,6 +2433,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           )
         `)
         .eq('company_id', companyId)
+        .order('name', { ascending: true })
         .range(0, 200); // Limite de 200 grupos por concessionária (otimizado)
 
       if (templatesError) {
@@ -2783,9 +2798,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       setLoadingFolders(true);
 
+      // Otimização: Buscar apenas campos necessários
       const { data, error } = await supabase
         .from('budget_folders')
-        .select('*')
+        .select('id, name, color, user_id, created_at, updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 

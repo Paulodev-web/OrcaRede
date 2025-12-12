@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Edit, Trash2, Filter, Loader2, Search } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAlertDialog } from '../hooks/useAlertDialog';
@@ -25,8 +25,11 @@ export function GerenciarGrupos() {
 
   // Carregar concessionárias na montagem do componente
   useEffect(() => {
-    fetchUtilityCompanies();
-  }, [fetchUtilityCompanies]); // Função memoizada não causa loop
+    if (utilityCompanies.length === 0 && !loadingCompanies) {
+      fetchUtilityCompanies();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executa apenas uma vez na montagem
 
   // Definir primeira concessionária como selecionada quando carregadas
   useEffect(() => {
@@ -37,21 +40,23 @@ export function GerenciarGrupos() {
 
   // Carregar grupos quando concessionária for selecionada
   useEffect(() => {
-    if (selectedConcessionaria) {
+    if (selectedConcessionaria && !loadingGroups) {
       fetchItemGroups(selectedConcessionaria);
     }
-  }, [selectedConcessionaria, fetchItemGroups]); // Função memoizada não causa loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConcessionaria]); // Só recarrega quando concessionária muda
 
-  // Filtrar grupos por termo de busca
-  const gruposFiltrados = itemGroups.filter((grupo) => {
-    if (!searchTerm) return true;
+  // Memoizar filtro de grupos para melhor performance
+  const gruposFiltrados = useMemo(() => {
+    if (!searchTerm) return itemGroups;
     
     const searchLower = searchTerm.toLowerCase();
-    const nomeMatch = grupo.nome.toLowerCase().includes(searchLower);
-    const descricaoMatch = grupo.descricao?.toLowerCase().includes(searchLower);
-    
-    return nomeMatch || descricaoMatch;
-  });
+    return itemGroups.filter((grupo) => {
+      const nomeMatch = grupo.nome.toLowerCase().includes(searchLower);
+      const descricaoMatch = grupo.descricao?.toLowerCase().includes(searchLower);
+      return nomeMatch || descricaoMatch;
+    });
+  }, [itemGroups, searchTerm]);
 
   const handleEdit = (grupo: GrupoItem) => {
     setCurrentGroup(grupo);

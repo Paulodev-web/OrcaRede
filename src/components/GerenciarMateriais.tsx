@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Search, Edit, Trash2, Upload, Loader2, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAlertDialog } from '../hooks/useAlertDialog';
@@ -30,8 +30,12 @@ export function GerenciarMateriais() {
 
   // Buscar materiais quando o componente for montado
   useEffect(() => {
-    fetchMaterials();
-  }, []);
+    // Só busca se não houver materiais carregados (evita recarregar desnecessariamente)
+    if (materiais.length === 0 && !loadingMaterials) {
+      fetchMaterials();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executa apenas uma vez na montagem
 
   // Auto-hide messages after 5 seconds
   useEffect(() => {
@@ -124,49 +128,82 @@ export function GerenciarMateriais() {
     setCurrentPage(1);
   }, [searchTerm, sortField, sortOrder, itemsPerPage]);
 
-  // Filtrar e ordenar materiais
-  const filteredMateriais = materiais
-    .filter(material => {
-      const searchLower = searchTerm.toLowerCase();
-      return material.codigo.toLowerCase().includes(searchLower) ||
-             material.descricao.toLowerCase().includes(searchLower);
-    })
-    .map(material => ({
-      material,
-      relevance: searchTerm ? getSearchRelevance(material, searchTerm) : 0
-    }))
-    .sort((a, b) => {
-      // Se há busca ativa, ordenar por relevância primeiro
-      if (searchTerm) {
+  // Memoizar filtro e ordenação para evitar recálculos desnecessários
+  const filteredMateriais = useMemo(() => {
+    if (!materiais.length) return [];
+    
+    const searchLower = searchTerm.toLowerCase();
+    
+    // Se não há busca, apenas ordenar
+    if (!searchTerm) {
+      return [...materiais].sort((a, b) => {
+        let comparison = 0;
+        switch (sortField) {
+          case 'descricao':
+            comparison = a.descricao.localeCompare(b.descricao, 'pt-BR', { sensitivity: 'base' });
+            break;
+          case 'codigo':
+            comparison = a.codigo.localeCompare(b.codigo, 'pt-BR', { sensitivity: 'base' });
+            break;
+          case 'precoUnit':
+            comparison = a.precoUnit - b.precoUnit;
+            break;
+        }
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    }
+    
+    // Com busca: filtrar, calcular relevância e ordenar
+    return materiais
+      .filter(material => {
+        return material.codigo.toLowerCase().includes(searchLower) ||
+               material.descricao.toLowerCase().includes(searchLower);
+      })
+      .map(material => ({
+        material,
+        relevance: getSearchRelevance(material, searchTerm)
+      }))
+      .sort((a, b) => {
+        // Ordenar por relevância primeiro quando há busca
         const relevanceDiff = b.relevance - a.relevance;
         if (relevanceDiff !== 0) return relevanceDiff;
-      }
-      
-      // Ordenação normal quando não há busca ou relevância igual
-      let comparison = 0;
-      
-      switch (sortField) {
-        case 'descricao':
-          comparison = a.material.descricao.localeCompare(b.material.descricao, 'pt-BR', { sensitivity: 'base' });
-          break;
-        case 'codigo':
-          comparison = a.material.codigo.localeCompare(b.material.codigo, 'pt-BR', { sensitivity: 'base' });
-          break;
-        case 'precoUnit':
-          comparison = a.material.precoUnit - b.material.precoUnit;
-          break;
-      }
-      
-      return sortOrder === 'asc' ? comparison : -comparison;
-    })
-    .map(item => item.material);
+        
+        // Se relevância igual, usar ordenação normal
+        let comparison = 0;
+        switch (sortField) {
+          case 'descricao':
+            comparison = a.material.descricao.localeCompare(b.material.descricao, 'pt-BR', { sensitivity: 'base' });
+            break;
+          case 'codigo':
+            comparison = a.material.codigo.localeCompare(b.material.codigo, 'pt-BR', { sensitivity: 'base' });
+            break;
+          case 'precoUnit':
+            comparison = a.material.precoUnit - b.material.precoUnit;
+            break;
+        }
+        return sortOrder === 'asc' ? comparison : -comparison;
+      })
+      .map(item => item.material);
+  }, [materiais, searchTerm, sortField, sortOrder]);
 
-  // Cálculos de paginação
-  const totalItems = filteredMateriais.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedMateriais = filteredMateriais.slice(startIndex, endIndex);
+  // Memoizar cálculos de paginação
+  const paginationData = useMemo(() => {
+    const totalItems = filteredMateriais.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedMateriais = filteredMateriais.slice(startIndex, endIndex);
+    
+    return {
+      totalItems,
+      totalPages,
+      startIndex,
+      endIndex,
+      paginatedMateriais
+    };
+  }, [filteredMateriais, currentPage, itemsPerPage]);
+
+  const { totalItems, totalPages, startIndex, endIndex, paginatedMateriais } = paginationData;
 
   // Funções de navegação de página
   const goToFirstPage = () => setCurrentPage(1);

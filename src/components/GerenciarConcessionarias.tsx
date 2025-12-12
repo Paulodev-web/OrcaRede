@@ -25,8 +25,11 @@ export function GerenciarConcessionarias() {
 
   // Buscar concessionárias quando o componente for montado
   useEffect(() => {
-    fetchUtilityCompanies();
-  }, [fetchUtilityCompanies]);
+    if (utilityCompanies.length === 0 && !loadingCompanies) {
+      fetchUtilityCompanies();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executa apenas uma vez na montagem
 
   // Auto-hide messages after 5 seconds
   useEffect(() => {
